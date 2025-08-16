@@ -1,0 +1,77 @@
+/* style.css */
+
+/* ページ全体の基本スタイル */
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f9f9f9;
+  margin: 0;
+  padding: 0;
+}
+
+/* コンテナ */
+.container {
+  width: 90%;
+  max-width: 900px;
+  margin: 20px auto;
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* カード風 */
+.card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  background: #fafafa;
+}
+
+/* ボタン */
+button {
+  background: #0078d7;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+button:hover {
+  background: #005ea0;
+}
+
+/* 入力 */
+input, textarea {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* ギャラリー */
+#gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 15px;
+}
+.gallery-item {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  padding: 10px;
+}
+.gallery-item img {
+  max-width: 100%;
+  border-radius: 4px;
+}
+.comment {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #444;
+}
+.admin-controls {
+  margin-top: 5px;
+}
