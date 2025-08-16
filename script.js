@@ -9,7 +9,7 @@ import {
 
 // ★ここはあなたのコンソールの値。今のプロジェクトの設定を入れてあります
 const firebaseConfig = {
-  apiKey: "AIzaSyAt4ebgY4u1ySZt1BZjqXTXOMG49h6A-T0",
+  apiKey: "QBJ78e2NKlSRTELJLbh2SmALxll2",
   authDomain: "gazo-upload-e4201.firebaseapp.com",
   projectId: "gazo-upload-e4201",
   storageBucket: "gazo-upload-e4201.appspot.com",
