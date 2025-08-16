@@ -1,11 +1,15 @@
-// script.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+// script.js  — index.html（fileInput / uploadBtn / preview / commentInput）に対応
 
-// Firebase設定（index.htmlと同じものにしてください）
+// ---- Firebase (あなたのプロジェクト値) ----
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs,
+  query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ★ここはあなたのコンソールの値。今のプロジェクトの設定を入れてあります
 const firebaseConfig = {
-  apiKey: "あなたのAPIキー",
+  apiKey: "AIzaSyAt4ebgY4u1ySZt1BZjqXTXOMG49h6A-T0",
   authDomain: "gazo-upload-e4201.firebaseapp.com",
   projectId: "gazo-upload-e4201",
   storageBucket: "gazo-upload-e4201.appspot.com",
@@ -15,86 +19,115 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+const db  = getFirestore(app);
 
-// ====== ログイン関連 ======
-document.getElementById("adminLogin")?.addEventListener("click", async () => {
-  const email = document.getElementById("adminEmail").value;
-  const password = document.getElementById("adminPassword").value;
+// ---- DOM参照 ----
+const fileInput     = document.getElementById("fileInput");
+const uploadBtn     = document.getElementById("uploadBtn");
+const previewImg    = document.getElementById("preview");
+const commentInput  = document.getElementById("commentInput");
+const saveCommentBtn= document.getElementById("saveCommentBtn"); // ※今回は未使用
+const galleryDiv    = document.getElementById("gallery");
+
+// ---- 画像プレビュー ----
+let selectedFile = null;
+fileInput.addEventListener("change", () => {
+  const f = fileInput.files?.[0] || null;
+  selectedFile = f;
+  if (!f) {
+    previewImg.removeAttribute("src");
+    return;
+  }
+  if (!f.type.startsWith("image/")) {
+    alert("画像ファイルを選択してください");
+    fileInput.value = "";
+    selectedFile = null;
+    return;
+  }
+  // プレビュー表示
+  const url = URL.createObjectURL(f);
+  previewImg.src = url;
+});
+
+// ---- Firestoreへアップロード（Base64で保存） ----
+uploadBtn.addEventListener("click", async () => {
+  if (!selectedFile) {
+    alert("画像を選択してください");
+    return;
+  }
   try {
-    await signInWithEmailAndPassword(auth, email, password);
-    alert("管理者ログイン成功！");
-    loadGallery(true);
-  } catch (err) {
-    alert("ログイン失敗: " + err.message);
+    // 画像をBase64に変換
+    const base64 = await fileToBase64(selectedFile);
+
+    // Firestoreに保存（画像とコメントを同じドキュメントに）
+    await addDoc(collection(db, "gallery"), {
+      imageData: base64,
+      comment: (commentInput?.value || "").trim(),
+      createdAt: serverTimestamp()
+    });
+
+    alert("アップロード完了！");
+    // 入力リセット
+    fileInput.value = "";
+    previewImg.removeAttribute("src");
+    if (commentInput) commentInput.value = "";
+    selectedFile = null;
+
+    // リスト再読み込み
+    await loadGallery();
+  } catch (e) {
+    alert("アップロードに失敗: " + e.message);
+    console.error(e);
   }
 });
 
-document.getElementById("guestLogin")?.addEventListener("click", async () => {
-  try {
-    await signInAnonymously(auth);
-    alert("ゲストログイン成功！");
-    loadGallery(false);
-  } catch (err) {
-    alert("ログイン失敗: " + err.message);
-  }
-});
+// File -> Base64
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
-// ====== Firestoreへ投稿 ======
-document.getElementById("uploadForm")?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const file = document.getElementById("imageFile").files[0];
-  const comment = document.getElementById("comment").value;
+// ---- ギャラリー表示 ----
+async function loadGallery() {
+  galleryDiv.innerHTML = "";
+  const q = query(collection(db, "gallery"), orderBy("createdAt", "desc"));
+  const snap = await getDocs(q);
 
-  if (!file) {
-    alert("画像を選んでください");
+  if (snap.empty) {
+    galleryDiv.innerHTML = '<p class="muted">まだ投稿がありません</p>';
     return;
   }
 
-  const reader = new FileReader();
-  reader.onloadend = async () => {
-    const base64 = reader.result;
-    await addDoc(collection(db, "gallery"), {
-      image: base64,
-      comment: comment,
-      createdAt: new Date()
-    });
-    alert("アップロード成功！");
-    loadGallery(auth.currentUser?.email !== null); 
-  };
-  reader.readAsDataURL(file);
-});
+  snap.forEach(docSnap => {
+    const d = docSnap.data();
+    const wrap = document.createElement("div");
+    wrap.className = "card photo";
+    const created =
+      d.createdAt?.toDate?.()?.toLocaleString?.() || "";
 
-// ====== Firestoreからギャラリー取得 ======
-async function loadGallery(isAdmin) {
-  const galleryDiv = document.getElementById("gallery");
-  galleryDiv.innerHTML = "";
-
-  const querySnapshot = await getDocs(collection(db, "gallery"));
-  querySnapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    const item = document.createElement("div");
-    item.className = "gallery-item";
-
-    item.innerHTML = `
-      <img src="${data.image}" alt="uploaded">
-      <div class="comment">${data.comment || ""}</div>
+    wrap.innerHTML = `
+      <div>
+        <img src="${d.imageData}" style="max-width:100%;border-radius:12px" alt="uploaded">
+      </div>
+      <div>
+        <div class="muted">投稿日: ${created}</div>
+        <div class="comment">${escapeHtml(d.comment || "")}</div>
+      </div>
     `;
-
-    // 管理者だけ削除ボタンを表示
-    if (isAdmin) {
-      const btn = document.createElement("button");
-      btn.textContent = "削除";
-      btn.className = "admin-controls";
-      btn.onclick = async () => {
-        await deleteDoc(doc(db, "gallery", docSnap.id));
-        alert("削除しました");
-        loadGallery(true);
-      };
-      item.appendChild(btn);
-    }
-
-    galleryDiv.appendChild(item);
+    galleryDiv.appendChild(wrap);
   });
 }
+
+// XSS対策の簡易エスケープ
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, s => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[s]));
+}
+
+// 初回読み込み
+loadGallery();
